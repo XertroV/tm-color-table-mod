@@ -25,14 +25,17 @@ string GetGameVersion() {
     return app.SystemPlatform.ExeVersion;
 }
 
-string TmGameVersion = GetGameVersion();
+string TmGameVersion;
 bool GameVersionOkay = false;
 
 void Main() {
+    TmGameVersion = GetGameVersion();
     GameVersionOkay = TmGameVersion >= "2024-06-28_13_46";
     startnew(LoadFids);
 }
 void OnEnabled() {
+    TmGameVersion = GetGameVersion();
+    GameVersionOkay = TmGameVersion >= "2024-06-28_13_46";
     startnew(LoadFids);
 }
 
