@@ -1,0 +1,7 @@
+{ 
+	"ClassId" : "CPlugMaterialColorTargetTable", 
+	"Colors" : ["#e1e1e100", "#4fa46400", "#3e82b900", "#ca3a2600", "#25252500" ], 
+	"Colors_Blind" : ["#ffffff", "#9cd91900", "#446ec900", "#cf6f0000", "#25252500" ], 
+	"TM_Stunt" : ["#6df1dd00", "#cef16d00", "#f1a66d00", "#f48dea00", "#6da2f100" ], 
+	"TM_Stunt_Blind" : ["#6df1dd00", "#cef16d00", "#f1a66d00", "#f48db800", "#6da2f100" ]
+}

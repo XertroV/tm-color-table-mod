@@ -1,0 +1,9 @@
+[meta]
+name     = "Color Tables Customizer"
+author   = "XertroV"
+category = "Utilities"
+version  = "0.1.5"
+
+[script]
+#__DEFINES__
+# dependencies = ["MLHook", "MLFeedRaceData"]
