@@ -20,7 +20,16 @@ const string COLOR_TABLES_FOLDER = "GameData/Stadium/Media/ColorTargetTables";
 const string COLOR_TABLES_EXTENSION = ".ColorTable.gbx.json";
 
 
+string GetGameVersion() {
+    auto app = GetApp();
+    return app.SystemPlatform.ExeVersion;
+}
+
+string TmGameVersion = GetGameVersion();
+bool GameVersionOkay = false;
+
 void Main() {
+    GameVersionOkay = TmGameVersion >= "2024-06-28_13_46";
     startnew(LoadFids);
 }
 void OnEnabled() {
@@ -30,6 +39,7 @@ void OnEnabled() {
 CPlugMaterialColorTargetTable@[] tables;
 
 void LoadFids() {
+    if (!GameVersionOkay) return;
     if (tables.Length > 0) return;
     for (uint i = 0; i < colorTableNames.Length; i++) {
         auto name = COLOR_TABLES_FOLDER + "/" + colorTableNames[i] + COLOR_TABLES_EXTENSION;
@@ -83,6 +93,8 @@ bool openState = true;
 
 [SettingsTab name="Color Tables"]
 void R_S_ColorTables() {
+    if (!GameVersionOkay) return;
+
     UI::AlignTextToFramePadding();
 
     UI::SeparatorText("Visible Color Table Rows");
@@ -204,6 +216,7 @@ void SetOffsetColorHex(CPlugMaterialColorTargetTable@ table, uint offset, const 
 void SetColorTableFromJson(CPlugMaterialColorTargetTable@ table, Json::Value@ j) {
     SetColorTableRowFromJson(table, j, ColorTableOffsets::Colors);
     SetColorTableRowFromJson(table, j, ColorTableOffsets::Colors_Blind);
+    if (!GameVersionOkay) return;
     SetColorTableRowFromJson(table, j, ColorTableOffsets::TM_Stunt);
     SetColorTableRowFromJson(table, j, ColorTableOffsets::TM_Stunt_Blind);
 }
@@ -261,6 +274,7 @@ string ColorUintToHexString(uint color) {
 }
 
 void ColorTables_CopyFromTo(ColorTableOffsets from, ColorTableOffsets to, bool useDefaults = false) {
+    if (!GameVersionOkay) return;
     for (uint i = 0; i < tables.Length; i++) {
         auto table = tables[i];
         auto fromOffset = uint(from);
