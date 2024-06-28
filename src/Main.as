@@ -78,6 +78,9 @@ enum ColorTableOffsets {
 bool[] showEditTableRows = {true, true, true, true};
 string[] tableRowNames = {"Colors","Colors_Blind","TM_Stunt","TM_Stunt_Blind"};
 
+bool setOpenState = true;
+bool openState = true;
+
 [SettingsTab name="Color Tables"]
 void R_S_ColorTables() {
     UI::AlignTextToFramePadding();
@@ -96,23 +99,64 @@ void R_S_ColorTables() {
     if (UI::Button("Open Storage Folder")) {
         OpenExplorerPath(IO::FromStorageFolder(""));
     }
+    UI::SameLine();
+    if (UI::Button("Refresh From Files")) {
+        startnew(PopulateColorsFromFilesAsync);
+    }
+
+    UI::AlignTextToFramePadding();
+    UI::TextWrapped("\\$i\\$cccTo save the current colors, copy the files in the storage folder to a new directory. To restore them, copy them back to the main storage directory and refresh.\\$z");
+
+    UI::SeparatorText("Presets");
+    if (UI::Button("Copy current TM_Stunt* to Colors*")) {
+        ColorTables_CopyFromTo(ColorTableOffsets::TM_Stunt, ColorTableOffsets::Colors);
+        ColorTables_CopyFromTo(ColorTableOffsets::TM_Stunt_Blind, ColorTableOffsets::Colors_Blind);
+    }
+    UI::SameLine();
+    if (UI::Button("Copy current Colors* to TM_Stunt*")) {
+        ColorTables_CopyFromTo(ColorTableOffsets::Colors, ColorTableOffsets::TM_Stunt);
+        ColorTables_CopyFromTo(ColorTableOffsets::Colors_Blind, ColorTableOffsets::TM_Stunt_Blind);
+    }
+    // UI::SameLine();
+    if (UI::Button("Copy default TM_Stunt* to Colors*")) {
+        ColorTables_CopyFromTo(ColorTableOffsets::TM_Stunt, ColorTableOffsets::Colors, true);
+        ColorTables_CopyFromTo(ColorTableOffsets::TM_Stunt_Blind, ColorTableOffsets::Colors_Blind, true);
+    }
+    UI::SameLine();
+    if (UI::Button("Copy default Colors* to TM_Stunt*")) {
+        ColorTables_CopyFromTo(ColorTableOffsets::Colors, ColorTableOffsets::TM_Stunt, true);
+        ColorTables_CopyFromTo(ColorTableOffsets::Colors_Blind, ColorTableOffsets::TM_Stunt_Blind, true);
+    }
 
     UI::SeparatorText("Edit Colors");
+    if (UI::Button("Expand All")) {
+        setOpenState = true;
+        openState = true;
+    }
+    UI::SameLine();
+    if (UI::Button("Collapse All")) {
+        setOpenState = true;
+        openState = false;
+    }
+
     UI::Indent();
     for (uint i = 0; i < tables.Length; i++) {
         auto table = tables[i];
         string name = GetFidFromNod(table).ShortFileName;
         if (name == "Fun") name = "Fun \\$i(Royal/Plastic)";
-        UI::SeparatorText(name);
-        // 0x18 = colors, 0x3c = Colors_Blind, stljnt: 0x60, stljnt_blind: 0x84
-        UI::PushID(name+i);
-        if (showEditTableRows[0]) DrawModColorTable(table, ColorTableOffsets::Colors);
-        if (showEditTableRows[1]) DrawModColorTable(table, ColorTableOffsets::Colors_Blind);
-        if (showEditTableRows[2]) DrawModColorTable(table, ColorTableOffsets::TM_Stunt);
-        if (showEditTableRows[3]) DrawModColorTable(table, ColorTableOffsets::TM_Stunt_Blind);
-        UI::PopID();
+        if (setOpenState) UI::SetNextItemOpen(openState);
+        if (UI::CollapsingHeader(name)) {
+            // 0x18 = colors, 0x3c = Colors_Blind, stljnt: 0x60, stljnt_blind: 0x84
+            UI::PushID(name+i);
+            if (showEditTableRows[0]) DrawModColorTable(table, ColorTableOffsets::Colors);
+            if (showEditTableRows[1]) DrawModColorTable(table, ColorTableOffsets::Colors_Blind);
+            if (showEditTableRows[2]) DrawModColorTable(table, ColorTableOffsets::TM_Stunt);
+            if (showEditTableRows[3]) DrawModColorTable(table, ColorTableOffsets::TM_Stunt_Blind);
+            UI::PopID();
+        }
     }
     UI::Unindent();
+    setOpenState = false;
 }
 
 void DrawModColorTable(CPlugMaterialColorTargetTable@ table, ColorTableOffsets cto) {
@@ -174,16 +218,17 @@ Json::Value@ ColorTableToJson(CPlugMaterialColorTargetTable@ table) {
     return j;
 }
 
-void SetColorTableRowFromJson(CPlugMaterialColorTargetTable@ table, Json::Value@ j, ColorTableOffsets cto) {
-    auto offset = uint(cto);
-    string name = tostring(cto);
-    if (!j.HasKey(name)) {
-        warn("JSON for color table " + GetTableName(table) + " is missing " + name + " row: " + Json::Write(j));
+void SetColorTableRowFromJson(CPlugMaterialColorTargetTable@ table, Json::Value@ j, ColorTableOffsets to_cto, ColorTableOffsets from_cto = ColorTableOffsets(0)) {
+    if (int(from_cto) == 0) from_cto = to_cto;
+    auto offset = uint(to_cto);
+    string from_name = tostring(from_cto);
+    if (!j.HasKey(from_name)) {
+        warn("JSON for color table " + GetTableName(table) + " is missing " + from_name + " row: " + Json::Write(j));
         return;
     }
-    auto row = j[name];
+    auto row = j[from_name];
     if (row.GetType() != Json::Type::Array) {
-        warn("JSON for color table " + GetTableName(table) + " / " + name + " row is not an array: " + Json::Write(row));
+        warn("JSON for color table " + GetTableName(table) + " / " + from_name + " row is not an array: " + Json::Write(row));
         return;
     }
     for (uint i = 0; i < row.Length; i++) {
@@ -191,7 +236,7 @@ void SetColorTableRowFromJson(CPlugMaterialColorTargetTable@ table, Json::Value@
         if (Text::TryParseHexColor(string(row[i]), color)) {
             SetOffsetColorHex(table, offset + 0x4 + i * 0x4, color);
         } else {
-            warn("Failed to parse color: " + string(row[i]) + " in " + name + " row of color table " + GetTableName(table));
+            warn("Failed to parse color: " + string(row[i]) + " in " + from_name + " row of color table " + GetTableName(table));
         }
     }
 }
@@ -213,4 +258,26 @@ string ColorUintToHexString(uint color) {
         + Text::Format("%02X", (color >> 8) & 0xFF)
         + Text::Format("%02X", (color >> 16) & 0xFF)
         + Text::Format("%02X", (color >> 24) & 0xFF);
+}
+
+void ColorTables_CopyFromTo(ColorTableOffsets from, ColorTableOffsets to, bool useDefaults = false) {
+    for (uint i = 0; i < tables.Length; i++) {
+        auto table = tables[i];
+        auto fromOffset = uint(from);
+        auto toOffset = uint(to);
+        auto nbColors = Dev::GetOffsetUint32(table, fromOffset);
+        if (useDefaults) {
+            auto name = GetTableName(table);
+            IO::FileSource fd("defaults/" + name + COLOR_TABLES_EXTENSION);
+            auto j = Json::Parse(fd.ReadToEnd());
+            SetColorTableRowFromJson(table, j, to, from);
+        } else {
+            if (nbColors == 0 || nbColors > 5) continue; // error (no colors or too many
+            for (uint j = 0; j < nbColors; j++) {
+                auto color = Dev::GetOffsetUint32(table, fromOffset + 0x4 + j * 0x4);
+                Dev::SetOffset(table, toOffset + 0x4 + j * 0x4, color);
+            }
+        }
+        UpdateSavedColorTable(table);
+    }
 }
