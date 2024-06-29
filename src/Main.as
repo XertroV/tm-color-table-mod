@@ -99,8 +99,13 @@ string[] tableRowNames = {"Colors","Colors_Blind","TM_Stunt","TM_Stunt_Blind"};
 bool setOpenState = true;
 bool openState = true;
 
+bool g_IsInMapWithCustomColors = false;
+uint g_MapWithCustomColorsMwId = 0;
+
 [Setting hidden]
 bool S_EnableEmbeddedCustomColorTables = true;
+[Setting hidden]
+bool S_OverrideColorblindColorsToo = false;
 
 [SettingsTab name="Color Tables"]
 void R_S_ColorTables() {
@@ -114,11 +119,21 @@ void R_S_ColorTables() {
         UpdateEmbeddedCustomColorTablesHook();
     }
 
+    S_OverrideColorblindColorsToo = UI::Checkbox("Override Colorblind Colors Too", S_OverrideColorblindColorsToo);
+    AddSimpleTooltip("If you use the colorblind colors, you must enable this option to see custom colors in maps.");
+
     UI::SeparatorText("Visible Color Table Rows");
     for (uint i = 0; i < 4; i++) {
         if (i > 0) UI::SameLine();
         showEditTableRows[i] = UI::Checkbox(tableRowNames[i], showEditTableRows[i]);
     }
+
+    if (g_IsInMapWithCustomColors) {
+        UI::AlignTextToFramePadding();
+        UI::TextWrapped("You are in a map with custom colors -- please head back to the menu to customize your default colors.");
+    }
+
+    UI::BeginDisabled(g_IsInMapWithCustomColors);
 
     UI::SeparatorText("Saved Colors");
     if (UI::Button("Reset to Default")) {
@@ -186,6 +201,8 @@ void R_S_ColorTables() {
     }
     UI::Unindent();
     setOpenState = false;
+
+    UI::EndDisabled();
 }
 
 void DrawModColorTable(CPlugMaterialColorTargetTable@ table, ColorTableOffsets cto) {
@@ -343,4 +360,13 @@ void NotifyError(const string &in msg) {
 void NotifyWarning(const string &in msg) {
     warn(msg);
     UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.9, .6, .2, .3), 15000);
+}
+
+void AddSimpleTooltip(const string &in msg) {
+    if (UI::IsItemHovered()) {
+        UI::SetNextWindowSize(400, 0, UI::Cond::Appearing);
+        UI::BeginTooltip();
+        UI::TextWrapped(msg);
+        UI::EndTooltip();
+    }
 }

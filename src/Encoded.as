@@ -14,6 +14,17 @@ class ColorTablesInMap {
 
     ColorTablesInMap() {}
 
+    bool isBackup = false;
+    ColorTableOffsets backupCTO;
+
+    ColorTablesInMap(ColorTableOffsets cto) {
+        isBackup = true;
+        backupCTO = cto;
+        for (uint i = 0; i < 10; i++) {
+            SetTableFromCTT(i, cto);
+        }
+    }
+
     ColorTablesInMap(const string &in encoded) {
         auto verRaw = encoded[0];
         if (verRaw <= 0x30) throw("Invalid version");
@@ -41,7 +52,10 @@ class ColorTablesInMap {
         if (buf.GetSize() - buf.GetPosition() < count * 16) throw("not enough data left!");
         table.Resize(count);
         for (uint i = 0; i < count; i++) {
-            table[i] = vec4(buf.ReadFloat(), buf.ReadFloat(), buf.ReadFloat(), buf.ReadFloat());
+            table[i].x = buf.ReadFloat();
+            table[i].y = buf.ReadFloat();
+            table[i].z = buf.ReadFloat();
+            table[i].w = buf.ReadFloat();
         }
     }
 
@@ -60,6 +74,111 @@ class ColorTablesInMap {
         }
         throw("Invalid table index: " + ix);
         return null;
+    }
+
+    string TableIxToName(uint ix) {
+        switch (ix) {
+            case 0: return "Canopy";
+            case 1: return "CanopyLights";
+            case 2: return "CanopyStructure";
+            case 3: return "Fun";
+            case 4: return "Sport";
+            case 5: return "SportDecals";
+            case 6: return "SportDecals2";
+            case 7: return "SportIllum";
+            case 8: return "SportObstacles";
+            case 9: return "TrackWall";
+        }
+        throw("Invalid table index: " + ix);
+        return "";
+    }
+
+    void SetTableFromDefault(uint ix, ColorTableOffsets cto) {
+        auto name = TableIxToName(ix);
+        IO::FileSource fd("defaults/" + name + COLOR_TABLES_EXTENSION);
+        SetTableFromJson(ix, Json::Parse(fd.ReadToEnd()), cto);
+    }
+
+    void SetTableFromJson(uint ix, Json::Value@ j, ColorTableOffsets cto) {
+        auto @table = GetTable(ix);
+        trace('setting table from json: ' + Json::Write(j));
+        auto row = j[tostring(cto)];
+        auto nbCols = row.Length;
+        table.Resize(nbCols);
+        for (uint i = 0; i < nbCols; i++) {
+            vec4 color;
+            if (Text::TryParseHexColor(string(row[i]), color)) {
+                table[i] = color;
+            } else {
+                warn("Failed to parse color: " + Json::Write(row[i]));
+            }
+        }
+    }
+
+    void SetTableFromCTT(uint ix, ColorTableOffsets cto) {
+        auto name = TableIxToName(ix);
+        for (uint i = 0; i < tables.Length; i++) {
+            auto table = tables[i];
+            if (GetTableName(table) == name) {
+                SetTableFromCTT(ix, table, cto);
+                return;
+            }
+        }
+    }
+
+    void SetTableFromCTT(uint ix, CPlugMaterialColorTargetTable@ table, ColorTableOffsets cto) {
+        auto @tableData = GetTable(ix);
+        auto offset = uint(cto);
+        auto nbCols = Get_CT_NbColors(table, cto);
+        tableData.Resize(nbCols);
+        for (uint i = 0; i < nbCols; i++) {
+            tableData[i] = GetOffsetColorHex(table, offset + 4 + i * 4);
+        }
+    }
+
+    void WriteTableToCTT(uint ix, ColorTableOffsets cto) {
+        auto name = TableIxToName(ix);
+        for (uint i = 0; i < tables.Length; i++) {
+            auto table = tables[i];
+            if (GetTableName(table) == name) {
+                WriteTableToCTT(ix, table, cto);
+                return;
+            }
+        }
+    }
+
+    void WriteTableToCTT(uint ix, CPlugMaterialColorTargetTable@ table, ColorTableOffsets cto) {
+        auto @tableData = GetTable(ix);
+        auto offset = uint(cto);
+        auto nbCols = tableData.Length;
+        // Set_CT_NbColors(table, cto, nbCols);
+        for (uint i = 0; i < nbCols; i++) {
+            SetOffsetColorHex(table, offset + 4 + i * 4, tableData[i]);
+        }
+    }
+
+    string Encode() {
+        MemoryBuffer@ buf = MemoryBuffer();
+        for (uint i = 0; i < 10; i++) {
+            auto @t = GetTable(i);
+            if (t.Length == 0) continue;
+            buf.Write(uint8(i)); // table index
+            EncodeColorsListToBuf(t, buf);
+        }
+        buf.Seek(0);
+        return "1" // version
+            + buf.ReadToBase64(buf.GetSize());
+    }
+}
+
+void EncodeColorsListToBuf(vec4[]@ list, MemoryBuffer@ buf) {
+    buf.Write(uint8(list.Length));
+    for (uint i = 0; i < list.Length; i++) {
+        auto col = list[i];
+        buf.Write(col.x);
+        buf.Write(col.y);
+        buf.Write(col.z);
+        buf.Write(col.w);
     }
 }
 
