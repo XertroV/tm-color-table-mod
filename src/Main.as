@@ -29,14 +29,17 @@ string TmGameVersion;
 bool GameVersionOkay = false;
 
 void Main() {
-    TmGameVersion = GetGameVersion();
-    GameVersionOkay = TmGameVersion >= "2024-06-28_13_46";
-    startnew(LoadFids);
+    RunMain();
 }
 void OnEnabled() {
+    RunMain();
+}
+
+void RunMain() {
     TmGameVersion = GetGameVersion();
     GameVersionOkay = TmGameVersion >= "2024-06-28_13_46";
     startnew(LoadFids);
+    UpdateEmbeddedCustomColorTablesHook();
 }
 
 CPlugMaterialColorTargetTable@[] tables;
@@ -76,9 +79,11 @@ void ReleaseTables() {
 
 void OnDestroyed() {
     ReleaseTables();
+    EmbeddedCustomColorTables::Disable();
 }
 void OnDisabled() {
     ReleaseTables();
+    EmbeddedCustomColorTables::Disable();
 }
 
 enum ColorTableOffsets {
@@ -94,11 +99,20 @@ string[] tableRowNames = {"Colors","Colors_Blind","TM_Stunt","TM_Stunt_Blind"};
 bool setOpenState = true;
 bool openState = true;
 
+[Setting hidden]
+bool S_EnableEmbeddedCustomColorTables = true;
+
 [SettingsTab name="Color Tables"]
 void R_S_ColorTables() {
     if (!GameVersionOkay) return;
 
+    UI::SeparatorText("Custom Embedded Color Tables");
     UI::AlignTextToFramePadding();
+    bool wasEmbeddedCCTEnabled = S_EnableEmbeddedCustomColorTables;
+    S_EnableEmbeddedCustomColorTables = UI::Checkbox("Enable Embedded Custom Color Tables", S_EnableEmbeddedCustomColorTables);
+    if (wasEmbeddedCCTEnabled != S_EnableEmbeddedCustomColorTables) {
+        UpdateEmbeddedCustomColorTablesHook();
+    }
 
     UI::SeparatorText("Visible Color Table Rows");
     for (uint i = 0; i < 4; i++) {
@@ -195,6 +209,10 @@ void DrawModColorTable(CPlugMaterialColorTargetTable@ table, ColorTableOffsets c
         }
     }
     UI::Unindent();
+}
+
+uint Get_CT_NbColors(CPlugMaterialColorTargetTable@ table, ColorTableOffsets cto) {
+    return Dev::GetOffsetUint32(table, uint(cto));
 }
 
 vec4 GetOffsetColorHex(CPlugMaterialColorTargetTable@ table, uint offset) {
@@ -297,4 +315,32 @@ void ColorTables_CopyFromTo(ColorTableOffsets from, ColorTableOffsets to, bool u
         }
         UpdateSavedColorTable(table);
     }
+}
+
+
+
+
+
+
+
+
+
+void Notify(const string &in msg) {
+    UI::ShowNotification(Meta::ExecutingPlugin().Name, msg);
+    trace("Notified: " + msg);
+}
+
+void NotifySuccess(const string &in msg) {
+    UI::ShowNotification(Meta::ExecutingPlugin().Name, msg, vec4(.4, .7, .1, .3), 10000);
+    trace("Notified: " + msg);
+}
+
+void NotifyError(const string &in msg) {
+    warn(msg);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Error", msg, vec4(.9, .3, .1, .3), 15000);
+}
+
+void NotifyWarning(const string &in msg) {
+    warn(msg);
+    UI::ShowNotification(Meta::ExecutingPlugin().Name + ": Warning", msg, vec4(.9, .6, .2, .3), 15000);
 }

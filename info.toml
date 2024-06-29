@@ -7,3 +7,4 @@ version  = "0.2.0"
 [script]
 #__DEFINES__
 # dependencies = ["MLHook", "MLFeedRaceData"]
+optional_dependencies = ["Editor"]
