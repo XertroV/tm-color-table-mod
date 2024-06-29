@@ -335,7 +335,9 @@ void ColorTables_CopyFromTo(ColorTableOffsets from, ColorTableOffsets to, bool u
 }
 
 
-
+ColorTablesInMap@ GetCurrentColorsTables(ColorTableOffsets cto) {
+    return ColorTablesInMap(cto);
+}
 
 
 

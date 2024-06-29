@@ -247,11 +247,20 @@ void R_S_EmbedCustomColors() {
     UI::TextWrapped("Please Note! These custom colors are managed entirely through this plugin. They are not like a map mod. They will not work on consoles, nor for people who don't have " + PluginName + " installed.");
     auto editor = cast<CGameCtnEditorFree>(GetApp().Editor);
     UI::SeparatorText("Embed in Map");
+#if DEPENDENCY_EDITOR
     if (editor is null) {
         UI::TextWrapped("You must be in the map editor to use this feature.");
         return;
     }
-#if DEPENDENCY_EDITOR
+    auto ep = Meta::GetPluginFromID("Editor");
+    if (ep is null) {
+        UI::TextWrapped("Failed to get Editor++ plugin info");
+        return;
+    }
+    if (!ep.Enabled) {
+        UI::TextWrapped("Editor++ is disabled. Please enable it via: Developer > Toggle Plugin > Editor++.\nAlternatively: Settings > Toggle Plugins.");
+        return;
+    }
     DrawEmbedCustomColorsUI();
 #else
     UI::Text("Saving custom color tables to maps requires that you have \\$<\\$iEditor++\\$> installed.");
@@ -262,15 +271,6 @@ void R_S_EmbedCustomColors() {
 
 #if DEPENDENCY_EDITOR
 void DrawEmbedCustomColorsUI() {
-    auto ep = Meta::GetPluginFromID("Editor");
-    if (ep is null) {
-        UI::TextWrapped("Failed to get Editor++ plugin info");
-        return;
-    }
-    if (!ep.Enabled) {
-        UI::TextWrapped("Editor++ is disabled. Please enable it via: Developer > Toggle Plugin > Editor++.\nAlternatively: Settings > Toggle Plugins.");
-        return;
-    }
     if (UI::Button("Set Map to Stunt Colors")) {
         EmbedStuntColorsToMap();
     }
@@ -321,14 +321,6 @@ void EmbedCurrTableColorsToMap(ColorTableOffsets cto) {
     auto encoded = cs.Encode();
     Editor::Set_Map_EmbeddedCustomColorsEncoded(encoded);
     Notify("Embedded custom colors to map.\n\n\\$ccc\\$iRaw: " + encoded);
-}
-
-ColorTablesInMap@ GetCurrentColorsTables(ColorTableOffsets cto) {
-    return ColorTablesInMap(cto);
-    // for (uint i = 0; i < 10; i++) {
-    //     colors.SetTableFromCTT(i, cto);
-    // }
-    // return colors;
 }
 
 #endif
