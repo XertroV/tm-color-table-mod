@@ -77,10 +77,14 @@ namespace EmbeddedCustomColorTables {
 //     // ! process map metadata
 // }
 
-
+uint g_LastMapUidCheckedForColors = 0;
 void ProcessEmbeddedCTsInMapMD(CGameCtnChallenge@ map) {
     if (g_IsInMapWithCustomColors && g_MapWithCustomColorsMwId == map.Id.Value) {
         trace('loaded custom colors; skipping');
+        return;
+    }
+    if (map.Id.Value == g_LastMapUidCheckedForColors) {
+        trace('already checked this map for custom colors');
         return;
     }
     if (map.ScriptMetadata is null) {
@@ -100,11 +104,12 @@ void ProcessEmbeddedCTsInMapMD(CGameCtnChallenge@ map) {
         return;
     }
     // loop through buffer entries and look for CCT_CustomColorTables
-    auto bufFakeNod = Dev::GetOffsetNod(meta, O_MAP_SCRIPTMD_VALUES_BUF);
+    auto bufFakeNod = Dev_GetOffsetNodSafer(meta, O_MAP_SCRIPTMD_VALUES_BUF);
     if (bufFakeNod is null) {
         warn("Failed to get script MD values buffer");
         return;
     }
+    g_LastMapUidCheckedForColors = map.Id.Value;
     string mdName;
     uint elOffset;
     for (uint i = 0; i < len; i++) {

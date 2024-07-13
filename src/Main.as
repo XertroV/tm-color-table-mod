@@ -128,11 +128,6 @@ void R_S_ColorTables() {
         showEditTableRows[i] = UI::Checkbox(tableRowNames[i], showEditTableRows[i]);
     }
 
-    if (g_IsInMapWithCustomColors) {
-        UI::AlignTextToFramePadding();
-        UI::TextWrapped("You are in a map with custom colors -- please head back to the menu to customize your default colors.");
-    }
-
     UI::BeginDisabled(g_IsInMapWithCustomColors);
 
     UI::SeparatorText("Saved Colors");
@@ -173,6 +168,15 @@ void R_S_ColorTables() {
     }
 
     UI::SeparatorText("Edit Colors");
+
+    if (g_IsInMapWithCustomColors) {
+        UI::Indent();
+        UI::AlignTextToFramePadding();
+        UI::TextWrapped("\\$fffYou are in a map with custom colors -- please head back to the menu to customize your default colors.");
+        UI::Unindent();
+    }
+
+
     if (UI::Button("Expand All")) {
         setOpenState = true;
         openState = true;
